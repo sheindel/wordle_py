@@ -1,3 +1,5 @@
+__version__ = "0.1.0"
+
 import sys
 import random
 from datetime import datetime, date
@@ -6,7 +8,7 @@ import dateparser
 from rich import print
 from rich.prompt import Prompt, Confirm
 
-import words
+import wordle.words as words
 
 
 def get_random_word():
@@ -60,7 +62,7 @@ def select_date_for_word():
             pass
 
 
-if __name__ == "__main__":
+def main():
     MAX_GUESSES = 6
     guess = ""
 
@@ -70,6 +72,8 @@ if __name__ == "__main__":
     )
 
     solution = selections[word_selection]()
+
+    print("type 'exit' or an empty guess to exit")
 
     guess_history = []
     for guess_attempt in range(0, MAX_GUESSES):
@@ -98,3 +102,18 @@ if __name__ == "__main__":
             guess_history.append(guess)
             print(get_colored_guess(solution, guess))
             break
+
+    print("Sorry, you didn't guess the word.")
+    for index, guess in enumerate(guess_history):
+        print(f"{index+1}/{MAX_GUESSES} {get_colored_guess(solution, guess)}")
+    print(f"Ans {get_colored_guess(solution, solution)}")
+    exit()
+
+
+def cli(args=None):
+    """Process command line arguments."""
+    main()
+
+
+if __name__ == "__main__":
+    main()

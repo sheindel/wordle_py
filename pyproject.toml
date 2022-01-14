@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "wordle_py"
+name = "wordle"
 version = "0.1.0"
 description = ""
 authors = ["Stephen Heindel <stephen.heindel@gmail.com>"]
@@ -16,3 +16,6 @@ pytest = "^5.2"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+wordle = "wordle:cli"
