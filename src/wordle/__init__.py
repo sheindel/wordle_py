@@ -42,7 +42,7 @@ def get_colored_guess(solution, guess, include_letters: bool = True):
     result = ""
     for index, letter in enumerate(guess):
         if letter == solution[index]:
-            result += f"[black on green bold]{letter if include_letters else ' '}[/black on green bold]"
+            result += f"[black on #135425 bold]{letter if include_letters else ' '}[/black on #135425 bold]"
         elif letter in solution:
             result += f"[black on yellow bold]{letter if include_letters else ' '}[/black on yellow bold]"
         else:
