@@ -86,7 +86,7 @@ def main():
         print(f"Guess {guess_attempt+1} out of {MAX_GUESSES}")
 
         while True:
-            guess = Prompt.ask("Enter your guess").strip().lower()
+            guess = input(f"{guess_attempt}/{MAX_GUESSES} ").strip().lower()
             if not guess:
                 want_to_exit = Confirm.ask("You didn't enter anything. Do you want to exit?")
                 if want_to_exit:
