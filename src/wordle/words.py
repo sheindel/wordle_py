@@ -12976,3 +12976,5 @@ other_words = [
     "zymes",
     "zymic",
 ]
+
+all_words = sorted(selection_words + other_words)

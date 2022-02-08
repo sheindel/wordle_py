@@ -3,17 +3,26 @@ from typing import List
 import itertools
 
 from rich import print
+import numpy as np
 
 from wordle.player import Player
-from wordle.util import GuessResult, format_colorized_guess, get_random_word, score_result
+from wordle.util import (
+    ALPHABET,
+    GuessResult,
+    format_colorized_guess,
+    get_letter_occurrences,
+    get_networked_weight,
+    get_random_word,
+    score_result,
+    weight_words_not_guessed,
+)
 import wordle.words as words
 
 
 class BasicBot(Player):
-    alphabet = set("abcdefghijklmnopqrstuvwxyz")
-
     def __init__(self, starting_words, supervisor=None):
         self.all_words = words.selection_words + words.other_words
+        self.np_all_words = np.array([list(word) for word in self.all_words])
         self.char_lists = [list(word) for word in self.all_words]
         self.lookup_lists = list(zip(*self.char_lists))
         self.silent = True
@@ -50,10 +59,12 @@ class BasicBot(Player):
             word_list = self.get_possible_words()
             # print(word_list)
 
-            char_list = self.get_letter_occurrences(word_list)
-            word_char_weights = self.get_not_guessed_word_weight(word_list, char_list, first_non_starting_guess)
-            weights = word_char_weights.values()
-            highest_weight = max(weights)
+            char_list = get_letter_occurrences(word_list)
+            # self.last_guess = weight_words_not_guessed(word_list)[0]
+            word_char_weights = weight_words_not_guessed(word_list, True)
+            highest_word, highest_weight = next(iter(word_char_weights.items()))
+            # print(highest_word)
+            # print(highest_weight)
             # 500   500 / 500, wins: 500 ( 100.00%), last: W 3, min: 2, max: 10, avg: 4.468
             # 1000  500 / 500, wins: 499 ( 99.80%), last: W 4, min: 2, max: 11, avg: 4.468
             # 50    500 / 500, wins: 500 ( 100.00%), last: W 6, min: 2, max: 8, avg: 4.408
@@ -65,46 +76,26 @@ class BasicBot(Player):
             # Char: 500 / 500, wins: 500 ( 100.00%), last: W 3, min: 2, max: 10, avg: 4.824
             if first_non_starting_guess and highest_weight >= 200:
                 # print(highest_weight)
-                self.last_guess = list(word_char_weights.keys())[list(weights).index(max(weights))]
+                # print(highest_word)
+                # print(highest_weight)
+                self.last_guess = highest_word
                 # print(f"Highest score {self.last_guess} = {max(weights)}")
             else:
                 # Word network weight strategy
-                word_weights = BasicBot.get_networked_weight(word_list)
+                word_weights = get_networked_weight(word_list)
                 weights = word_weights.values()
                 self.last_guess = list(word_weights.keys())[list(weights).index(max(weights))]
 
-                # Character weight strategy
-                ## char_list = self.get_letter_occurrences(word_list)
-                # self.last_guess = self.choose_word_with_letter_preference(word_list, char_list)
-                # self.last_guess = random.choice(self.get_possible_words())
+            # Character weight strategy
+            ## char_list = self.get_letter_occurrences(word_list)
+            # self.last_guess = self.choose_word_with_letter_preference(word_list, char_list)
+            # self.last_guess = random.choice(self.get_possible_words())
 
         # print(format_colorized_guess(self.last_guess, score_result(self.last_guess, self.solution)))
-        self.guess_history.append(self.last_guess)
+
+        # Player class adds to guess_history now
+        # self.guess_history.append(self.last_guess)
         return self.last_guess
-
-    def get_letters_guessed(self):
-        char_lists = [list(word) for word in self.guess_history]
-        not_used = set(itertools.chain(*char_lists))
-        return not_used
-
-    def get_letters_not_guessed(self):
-        guessed_letters = self.get_letters_guessed()
-        return BasicBot.alphabet.difference(guessed_letters)
-
-    def get_not_guessed_word_weight(self, word_list, char_list, discovery=False):
-        letters_not_guessed = self.get_letters_not_guessed()
-        # print(letters_not_guessed)
-        weights = dict(zip(word_list, [0] * len(word_list)))
-        for word in word_list:
-            characters = set(word)
-            if discovery and len(characters) < 5:
-                continue
-            for char in set(word):
-                if char in letters_not_guessed:
-                    weights[word] += char_list[char]
-
-        return weights
-        # for word in self.get_possible_words(word_list)
 
     def choose_word_with_letter_preference(self, word_list, char_list: dict[str, int]):
         top_letter_count = max(char_list.values())
@@ -114,37 +105,9 @@ class BasicBot(Player):
                     if letter in word:
                         return word
 
-    def get_networked_weight(word_list):
-        weights = dict(zip(word_list, [0] * len(word_list)))
-        for word in word_list:
-            for char in list(word):
-                for word in word_list:
-                    if char in word:
-                        weights[word] += 1
-
-        return weights
-
-    def get_character_lists(self, words: List[str], flatten=False):
-        char_lists = [list(word) for word in self.get_possible_words()]
-        if flatten:
-            return list(itertools.chain(*char_lists))
-        else:
-            return char_lists
-
-    def get_letter_occurrences(self, words: List[str]):
-        result = dict(zip(BasicBot.alphabet, [0] * len(BasicBot.alphabet)))
-        char_lists = [list(word) for word in self.get_possible_words()]
-        flat_chars = list(itertools.chain(*char_lists))
-        for char in BasicBot.alphabet:
-            result[char] = flat_chars.count(char)
-
-        return result
-
     def get_possible_words(self) -> List[str]:
         word_pairs = sorted(zip(self.ignore_mask, self.all_words))
-        # print(f"{len(self.all_words) - sum(self.ignore_mask)} words remain?")
         result = list(zip(*word_pairs[: len(self.all_words) - sum(self.ignore_mask)]))[1]
-        # print(f"{len(result)} possible words remain")
         return result
 
     def report_result(self, play_result: List[GuessResult]):
@@ -214,12 +177,15 @@ class BasicBot(Player):
         # print(self.get_letter_occurrences(self.get_possible_words()))
 
     def game_end(self, won):
-        # if won:
-        #     print(
-        #         f":smile: Bot got the word {format_colorized_guess(self.solution, [GuessResult.RightLetterRightPlace] * 5)} in {len(self.guess_history)} guesses"
-        #     )
-        # else:
-        #     print(
-        #         f":slightly_frowning_face: Bot lost, answer was {format_colorized_guess(self.solution, [GuessResult.RightLetterRightPlace] * 5)} in {len(self.guess_history)}"
-        #     )
-        self.supervisor(won, len(self.guess_history))
+
+        if self.supervisor:
+            self.supervisor(won, len(self.guess_history))
+        else:
+            if won:
+                print(
+                    f":smile: Bot got the word {format_colorized_guess(self.solution, [GuessResult.RightLetterRightPlace] * 5)} in {len(self.guess_history)} guesses"
+                )
+            else:
+                print(
+                    f":slightly_frowning_face: Bot lost, answer was {format_colorized_guess(self.solution, [GuessResult.RightLetterRightPlace] * 5)} in {len(self.guess_history)}"
+                )
