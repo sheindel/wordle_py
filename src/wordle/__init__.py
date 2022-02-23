@@ -12,7 +12,7 @@ import numpy as np
 
 from wordle.player import Player
 from wordle.bot import BasicBot
-from wordle.util import GuessResult, get_random_word, get_word_by_date, score_result
+from wordle.util import GuessResult, get_random_word, get_word_by_date, print_game_history_with_results, score_result
 
 import wordle.words as words
 
@@ -93,9 +93,9 @@ def bot_multi_run():
 guess_result_lookup = {"n": 0, "y": 1, "g": 2}
 
 
-def possible_words_char(guesses: Dict[str, List[str]]):
+def possible_words_char(guesses: Dict[str, List[GuessResult]]):
     possible_words(
-        {guess: [GuessResult(guess_result_lookup[i]) for i in results] for (guess, results) in guesses.items()}
+        {guess: results for (guess, results) in guesses.items()}
     )
 
 
@@ -117,9 +117,9 @@ def possible_words(guesses: Dict[str, List[GuessResult]]):
             else:  # GuessResult.RightLetterWrongPlace
                 misplaced_letters[index] = letter
 
-    print(exact_letters)
-    print(misplaced_letters)
-    print(wrong_letters)
+    # print(exact_letters)
+    # print(misplaced_letters)
+    # print(wrong_letters)
     wordle_stats(exact_letters, misplaced_letters, wrong_letters)
 
 
@@ -130,7 +130,15 @@ def wordle_stats(exact_letters={}, misplaced_letters={}, wrong_letters=[], print
     for position in exact_letters:
         filtered_list = filtered_list[(filtered_list[:, position] == exact_letters[position])]
     for position in misplaced_letters:
-        filtered_list = filtered_list[(filtered_list[:, position] != misplaced_letters[position])]
+        letter = misplaced_letters[position]
+        filtered_list = filtered_list[(filtered_list[:, position] != letter)]
+        filtered_list = filtered_list[
+            (filtered_list[:, 0] == letter)
+            | (filtered_list[:, 1] == letter)
+            | (filtered_list[:, 2] == letter)
+            | (filtered_list[:, 3] == letter)
+            | (filtered_list[:, 4] == letter)
+        ]
     for letter in wrong_letters:
         if letter not in exact_letters.values() and letter not in misplaced_letters.values():
             filtered_list = filtered_list[
@@ -141,14 +149,16 @@ def wordle_stats(exact_letters={}, misplaced_letters={}, wrong_letters=[], print
                 & (filtered_list[:, 4] != letter)
             ]
     possible_word_count = len(filtered_list)
-    print(f"{possible_word_count} possible words")
-    if possible_word_count < 20:
-        print(["".join(word) for word in filtered_list])
-    else:
-        print(filtered_list)
+    max_words_to_show = 30
+    print(f"{possible_word_count} possible words, showing {max_words_to_show}")
+    # Print first 30 words
+    possible_words = ["".join(word) for word in filtered_list]
+    print(
+        f"{possible_words[:min(max_words_to_show, len(possible_words))]}{'...' if len(possible_words) >= max_words_to_show else ''}"
+    )
 
-    print(" \t1\t2\t3\t4\t5")
     if print_letters:
+        print(" \t1\t2\t3\t4\t5")
         for l in ALPHABET:
             print(l, end="\t")
             for i in range(0, 5):
@@ -166,11 +176,12 @@ def wordle_stats(exact_letters={}, misplaced_letters={}, wrong_letters=[], print
     for i in range(0, 5):
         sorted_lists.append(sorted(alphabet_lists[i].items(), key=lambda kv: (kv[1], kv[0]), reverse=True))
 
-    for i in range(0, len(ALPHABET)):
-        for j in range(0, 5):
-            letter, value = sorted_lists[j][i]
-            print(f"{letter}:{value}", end="\t")
-        print("")
+    if print_letters:
+        for i in range(0, len(ALPHABET)):
+            for j in range(0, 5):
+                letter, value = sorted_lists[j][i]
+                print(f"{letter}:{value}", end="\t")
+            print("")
 
 
 def wordle_helper():
@@ -182,9 +193,13 @@ def wordle_helper():
     print("When entering your score, enter 5 letters in a row")
     print("Example: GNNYN")
     while True:
-        guess = input("Tell me the word you guessed [exit]: ").lower().strip()
+        print_game_history_with_results(history.keys(), 10, list(history.values()))
+        guess = input("Tell me the word you guessed [exit/restart]: ").lower().strip()
         if guess == "exit":
             break
+        if guess == "restart":
+            history = {}
+            continue
         if len(guess) != 5 or guess not in words.all_words:
             print("Not a valid word")
             continue
@@ -204,7 +219,7 @@ def wordle_helper():
         if result == None:
             continue
 
-        history[guess] = result
+        history[guess] = [GuessResult(guess_result_lookup[i]) for i in result]
         result = None
 
         possible_words_char(history)

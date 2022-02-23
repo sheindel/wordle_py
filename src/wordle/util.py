@@ -76,16 +76,26 @@ def format_colorized_guess(guess, score, include_letters: bool = True, use_emoji
 def print_game_history(
     guess_history, max_guesses, solution, include_letters: bool = True, include_guess_count=True, use_emoji: bool = False, header: str = None
 ):
+    results = []
+    for guess in guess_history:
+        results.append(score_result(guess, solution))
+    
+    print_game_history_with_results(guess_history, max_guesses, results, include_letters, include_guess_count, use_emoji, header)
+        
+
+
+def print_game_history_with_results(
+    guess_history, max_guesses, results, include_letters: bool = True, include_guess_count=True, use_emoji: bool = False, header: str = None
+):
     if header:
         print(header)
     for index, guess in enumerate(guess_history):
-        score = score_result(guess, solution)
+        score = results[index]
         guess_output = format_colorized_guess(guess, score, include_letters, use_emoji=use_emoji)
         if include_guess_count:
             print(f"{index+1}/{max_guesses} {guess_output}")
         else:
             print(guess_output)
-
 
 # Word/character weighting functions
 
